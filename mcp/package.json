@@ -1,0 +1,22 @@
+{
+  "name": "sonic-pi-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for controlling Sonic Pi via OSC",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "sonic-pi",
+    "mcp",
+    "osc",
+    "music"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "osc": "^2.4.5"
+  }
+}
