@@ -1,33 +1,29 @@
-# sp
-sonic-pi play
+# sonic-pi-mcp
+
+This connects any MCP client with Sonic Pi enabling you to create music with English.
 
 ## Sonic Pi MCP Server
 
 This repository includes a Node.js MCP (Model Context Protocol) server for controlling Sonic Pi via OSC.
 
-### Location
-- MCP server code: `/mcp/`
-- Example file: `src/hip.rb` (hip hop beat)
+*I wanted to use [mcp-sonic-pi](https://github.com/vinayak-mehta/mcp-sonic-pi) but had issues on my system so ported it to Node*
 
 ### Features
 - Direct OSC communication with Sonic Pi (no psonic dependency)
 - Supports both Sonic Pi v3.x and v4.x
 - Automatic port detection from Sonic Pi log files
-- Includes beat patterns for blues, rock, hip-hop, and electronic music
+
 
 ### Setup
 1. Install dependencies:
-   ```bash
-   cd mcp
-   npm install
-   ```
+ 
 
 2. Configure in `~/.claude.json`:
    ```json
    "sonic-pi": {
      "type": "stdio",
      "command": "node",
-     "args": ["/home/danny/github/sp/mcp/server.js"],
+     "args": ["/path/to/sonic-pi-mcp/mcp/server.js"],
      "env": {}
    }
    ```

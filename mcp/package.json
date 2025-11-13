@@ -1,6 +1,6 @@
 {
-  "name": "sonic-pi-mcp-server",
-  "version": "1.0.0",
+  "name": "sonic-pi-mcp",
+  "version": "0.2.0",
   "description": "MCP server for controlling Sonic Pi via OSC",
   "type": "module",
   "main": "server.js",
@@ -13,7 +13,7 @@
     "osc",
     "music"
   ],
-  "author": "",
+  "author": "Danny Ayers",
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
