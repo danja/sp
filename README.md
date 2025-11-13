@@ -36,28 +36,27 @@ The easy way is :
 claude mcp add sp-mc npx 'sp-mc@latest'
 ```
 
+Start Sonic Pi then start Claude.
+
 #### Installation
 
 ```sh
-git clone https://github.com/danja/sonic-pi-mcp.git
-cd sonic-pi-mcp
+git clone https://github.com/danja/sp-mc.git
+cd sp-mc
 npm install
 ```
 
 #### Configure MCP Connection
-
 
 eg. in `~/.claude.json`:
 ```json
    "sonic-pi": {
      "type": "stdio",
      "command": "node",
-     "args": ["/path/to/sonic-pi-mcp/mcp/server.js"],
+     "args": ["/path/to/sp-mc/mcp/server.js"],
      "env": {}
    }
 ```
-
-3. Restart Claude Code
 
 ### Running in VS Code
 
