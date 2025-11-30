@@ -90,3 +90,23 @@ export function clampDuration(duration, min = 0.05, max = 16) {
   if (!Number.isFinite(duration)) return null;
   return Math.min(Math.max(duration, min), max);
 }
+
+const SCALE_INTERVALS = {
+  minor_pentatonic: [0, 3, 5, 7, 10],
+  major_pentatonic: [0, 2, 4, 7, 9],
+  minor: [0, 2, 3, 5, 7, 8, 10],
+  major: [0, 2, 4, 5, 7, 9, 11],
+};
+
+export function buildScaleNotes(rootSym, mode = 'minor_pentatonic', octaves = 1) {
+  const root = noteSymbolToMidi(rootSym);
+  if (root === null) return [];
+  const normalized = normalizeSymbol(mode);
+  const intervals = SCALE_INTERVALS[normalized] || SCALE_INTERVALS.minor_pentatonic;
+  const notes = [];
+  for (let o = 0; o < Math.max(1, octaves); o += 1) {
+    const base = root + o * 12;
+    intervals.forEach((i) => notes.push(base + i));
+  }
+  return notes;
+}

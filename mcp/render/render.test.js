@@ -63,4 +63,28 @@ end
     expect(tracks.some((t) => t.includes('drop'))).toBe(false);
     rmSync(tmp, { recursive: true, force: true });
   });
+
+  it('renders deterministic notes.choose from scale assignment', () => {
+    const tmp = mkdtempSync(path.join(os.tmpdir(), 'render-choose-'));
+    const filePath = path.join(tmp, 'pattern.rb');
+    writeFileSync(
+      filePath,
+      `
+use_bpm 90
+live_loop :bass do
+  use_synth :tb303
+  notes = (scale :e2, :minor_pentatonic)
+  4.times do
+    play notes.choose
+    sleep 1
+  end
+end
+`
+    );
+    const result = renderSonicPiToMidi({ filePath, bars: 2 });
+    const synthTracks = result.tracks.filter((t) => !t.isPercussion);
+    expect(synthTracks.length).toBeGreaterThan(0);
+    expect(result.eventCount).toBeGreaterThan(0);
+    rmSync(tmp, { recursive: true, force: true });
+  });
 });

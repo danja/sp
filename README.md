@@ -17,7 +17,7 @@ So far only tested on a Linux system with Claude Code.
 Known limitations (planned improvements):
 - Complex Ruby control flow/randomness is skipped with warnings.
 - Timing is best-effort for straightforward `sleep`/`.times`; no randomness/conditionals.
-- Limited chord vocabulary and drum sample map; falls back to grand piano or default drum pitch when unknown.
+ - Limited chord vocabulary and drum sample map; falls back to grand piano or default drum pitch when unknown. `notes.choose` draws from the last `scale` assignment (random choice); `one_in(n)` blocks execute probabilistically.
 
 ### Features
 - Direct OSC communication with Sonic Pi (no psonic dependency)

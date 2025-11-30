@@ -15,6 +15,7 @@ import {
   chordToMidis,
   velocityFromAmp,
   clampDuration,
+  buildScaleNotes,
 } from './utils.js';
 import { mapSampleToDrum } from './constants.js';
 
@@ -95,11 +96,30 @@ function parsePlay(line, loopName, context) {
     const opts = parseHashArgs(line.slice(line.indexOf('chord(') + chordMatch[0].length));
     return buildEvent(notes, loopName, context, opts);
   }
-  const playMatch = line.match(/play\s+([:\w#][\w#]*)\s*(.*)/);
+  const playMatch = line.match(/play\s+([:\w#.]+)\s*(.*)/);
   if (!playMatch) return null;
   const target = playMatch[1];
+  if (target === 'notes.choose') {
+    const scaleNotes = context.scaleNotes && context.scaleNotes.length > 0 ? context.scaleNotes : null;
+    if (scaleNotes) {
+      const idx = Math.floor(Math.random() * scaleNotes.length);
+      const notes = [scaleNotes[idx]];
+      const opts = parseHashArgs(playMatch[2]);
+      return buildEvent(notes, loopName, context, opts);
+    }
+    const fallback = context.scaleRoot ? noteSymbolToMidi(context.scaleRoot) : noteSymbolToMidi(':c2');
+    const notes = fallback !== null ? [fallback] : [48];
+    const opts = parseHashArgs(playMatch[2]);
+    return buildEvent(notes, loopName, context, opts);
+  }
   const notes = [];
-  const midi = noteSymbolToMidi(target);
+  let resolved = null;
+  if (context.bindings && context.bindings[target] !== undefined) {
+    resolved = context.bindings[target];
+  } else {
+    resolved = noteSymbolToMidi(target);
+  }
+  const midi = resolved;
   if (midi !== null) notes.push(midi);
   const opts = parseHashArgs(playMatch[2]);
   return buildEvent(notes, loopName, context, opts);
@@ -198,6 +218,14 @@ function parseBlock(lines, loopName, baseContext, warnings) {
       continue;
     }
 
+    const scaleAssign = line.match(/notes\s*=\s*\(scale\s+([:\w#]+)\s*,\s*([:\w]+)(?:,\s*num_octaves:\s*([0-9]+))?/);
+    if (scaleAssign) {
+      context.scaleRoot = scaleAssign[1];
+      context.scaleNotes = buildScaleNotes(scaleAssign[1], scaleAssign[2], Number(scaleAssign[3]) || 1);
+      i += 1;
+      continue;
+    }
+
     const timesMatch = line.match(/^(\d+)\.times\s+do/);
     if (timesMatch) {
       const repeat = Number(timesMatch[1]);
@@ -250,6 +278,35 @@ function parseBlock(lines, loopName, baseContext, warnings) {
       context.time = timeBeats;
       context.timeSec = timeSec;
       i = nextIndex;
+      continue;
+    }
+
+    const oneInMatch = line.match(/^if\s+one_in\((\d+)\)/);
+    if (oneInMatch) {
+      const threshold = Number(oneInMatch[1]) || 2;
+      const trigger = Math.floor(Math.random() * threshold) === 0;
+      const { body, nextIndex } = collectDoEndBlock(lines, i + 1);
+      if (trigger) {
+        const inner = parseBlock(body, loopName, { ...context, offsetBeats: timeBeats, offsetSec: timeSec }, warnings);
+        inner.events.forEach((evt) => events.push(evt));
+        timeBeats += inner.lengthBeats;
+        timeSec += inner.lengthSec;
+        context.time = timeBeats;
+        context.timeSec = timeSec;
+      }
+      i = nextIndex;
+      continue;
+    }
+
+    const rrandMatch = line.match(/^([a-zA-Z_][\w]*)\s*=\s*rrand\(([^,]+),\s*([^)]+)\)/);
+    if (rrandMatch) {
+      const key = rrandMatch[1];
+      const low = parseNumber(rrandMatch[2]) ?? 0;
+      const high = parseNumber(rrandMatch[3]) ?? low;
+      const val = Math.random() * (high - low) + low;
+      context.bindings = context.bindings || {};
+      context.bindings[key] = val;
+      i += 1;
       continue;
     }
 
