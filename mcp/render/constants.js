@@ -41,6 +41,19 @@ export const DRUM_NOTE_MAP = {
   clap: { midi: 39, id: 'clap' },
   tabla_tas1: { midi: 60, id: 'tabla' },
   tabla_ke1: { midi: 61, id: 'tabla' },
+  elec_tick: { midi: 37, id: 'tick' },
+  elec_blip: { midi: 80, id: 'blip' },
+  elec_blip2: { midi: 81, id: 'blip' },
+  elec_hi_snare: { midi: 40, id: 'snare' },
+  elec_mid_snare: { midi: 38, id: 'snare' },
+  elec_soft_kick: { midi: 35, id: 'kick' },
+  elec_hollow_kick: { midi: 36, id: 'kick' },
+  elec_soft_snare: { midi: 40, id: 'snare' },
+  elec_chime: { midi: 82, id: 'bell' },
+  elec_filt_snare: { midi: 38, id: 'snare' },
+  elec_fuzz_tom: { midi: 48, id: 'tom_mid' },
+  elec_twang: { midi: 42, id: 'hat_closed' },
+  elec_pop: { midi: 84, id: 'pop' },
 };
 
 export function synthToProgram(synth) {

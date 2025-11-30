@@ -63,8 +63,9 @@ export function renderMidiFromEvents(events, options = {}) {
 }
 
 function getTrackKey(evt) {
-  if (evt.isPercussion) return evt.instrumentId || 'drum:unknown';
-  return `${evt.instrumentId || 'synth:default'}:${evt.loopName || 'main'}`;
+  const loop = evt.loopName || 'main';
+  if (evt.isPercussion) return `${evt.instrumentId || 'drum:unknown'}:${loop}`;
+  return `${evt.instrumentId || 'synth:default'}:${loop}`;
 }
 
 function* createChannelPool() {

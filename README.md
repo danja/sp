@@ -14,6 +14,11 @@ So far only tested on a Linux system with Claude Code.
 - Live OSC tools (`initialize_sonic_pi`, `play_music`, etc.) unchanged and working as before.
 - New `render_midi` tool can read Sonic Pi `.rb` files and export `.mid` with per-instrument tracks (drums split per instrument). It now honors `with_bpm` blocks, simple `.times` repetition, common `live_loop` patterns, and maps popular drum samples to separate tracks.
 
+Known limitations (planned improvements):
+- Complex Ruby control flow/randomness is skipped with warnings.
+- Timing is best-effort for straightforward `sleep`/`.times`; no randomness/conditionals.
+- Limited chord vocabulary and drum sample map; falls back to grand piano or default drum pitch when unknown.
+
 ### Features
 - Direct OSC communication with Sonic Pi (no psonic dependency)
 - Supports both Sonic Pi v3.x and v4.x
@@ -119,6 +124,7 @@ npm run test:real
 - `mcp/server.test.js` - Tests for MCP server beat patterns and validation
 - `mcp/render/render.test.js` - Tests for Sonic Pi → MIDI rendering
 - `mcp/render/render-roundtrip.test.js` - Round-trip timing checks (e.g., with_bpm alignment)
+- `mcp/render/utils.test.js` - Note/chord/sample mapping tests
 - `test/helpers/` - Mock Sonic Pi server and test utilities
 - `test/fixtures/` - Sample log files for testing
 

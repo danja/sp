@@ -39,4 +39,28 @@ describe('renderSonicPiToMidi', () => {
 
     rmSync(tmp, { recursive: true, force: true });
   });
+
+  it('honors loop_names filter', () => {
+    const tmp = mkdtempSync(path.join(os.tmpdir(), 'render-loopfilter-'));
+    const filePath = path.join(tmp, 'pattern.rb');
+    writeFileSync(
+      filePath,
+      `
+use_bpm 100
+live_loop :keep do
+  sample :drum_bass_hard
+  sleep 1
+end
+live_loop :drop do
+  sample :drum_snare_hard
+  sleep 1
+end
+`
+    );
+    const result = renderSonicPiToMidi({ filePath, bars: 1, loopNames: ['keep'] });
+    const tracks = result.tracks.map((t) => t.name);
+    expect(tracks.some((t) => t.includes('keep'))).toBe(true);
+    expect(tracks.some((t) => t.includes('drop'))).toBe(false);
+    rmSync(tmp, { recursive: true, force: true });
+  });
 });

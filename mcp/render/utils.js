@@ -55,16 +55,18 @@ export function parseNumber(value) {
 export function noteSymbolToMidi(sym, defaultOctave = 4) {
   if (!sym) return null;
   const clean = normalizeSymbol(sym).toLowerCase();
-  const match = clean.match(/^([a-g])(#{1}|b)?(\d+)?$/);
+  const match = clean.match(/^([a-g])(?:(#|s|sh|sharp|b|fl|flat))?(\d+)?$/);
   if (!match) return null;
   const letter = match[1];
-  const accidental = match[2] || '';
+  const accidentalRaw = match[2] || '';
   const octave = match[3] ? Number(match[3]) : defaultOctave;
-  const key = accidental === '#'
-    ? `${letter}s`
-    : accidental === 'b'
-    ? `${letter}f`
-    : letter;
+  const accidental =
+    accidentalRaw === '#' || accidentalRaw === 's' || accidentalRaw === 'sh' || accidentalRaw === 'sharp'
+      ? 's'
+      : accidentalRaw === 'b' || accidentalRaw === 'fl' || accidentalRaw === 'flat'
+      ? 'f'
+      : '';
+  const key = accidental ? `${letter}${accidental}` : letter;
   const semitone = NOTE_BASE[key];
   if (semitone === undefined) return null;
   return 12 * (octave + 1) + semitone;
