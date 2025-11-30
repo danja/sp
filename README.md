@@ -65,7 +65,13 @@ The easy way is :
 claude mcp add sp-mc npx 'sp-mc@latest'
 ```
 
-Start Sonic Pi then start Claude.
+or
+
+```sh
+codex mcp add sp-mc npx 'sp-mc@latest'
+```
+
+Start Sonic Pi then start Claude/Codex.
 
 #### Installation
 
