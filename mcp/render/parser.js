@@ -85,6 +85,53 @@ function parseHashArgs(argStr) {
   return opts;
 }
 
+function splitTopLevel(listStr) {
+  const items = [];
+  let current = '';
+  let depth = 0;
+  for (let i = 0; i < listStr.length; i += 1) {
+    const ch = listStr[i];
+    if (ch === '(') depth += 1;
+    if (ch === ')') depth = Math.max(0, depth - 1);
+    if (ch === ',' && depth === 0) {
+      items.push(current.trim());
+      current = '';
+      continue;
+    }
+    current += ch;
+  }
+  if (current.trim()) items.push(current.trim());
+  return items;
+}
+
+function parseListToValues(listStr) {
+  return splitTopLevel(listStr)
+    .map((token) => {
+      const chordMatch = token.match(/^chord\(([^)]+)\)$/);
+      if (chordMatch) {
+        const args = chordMatch[1].split(',').map((s) => s.trim());
+        const tonic = args[0];
+        const quality = args[1] || 'major';
+        return chordToMidis(tonic, quality);
+      }
+      const num = parseNumber(token);
+      if (Number.isFinite(num)) return num;
+      const midi = noteSymbolToMidi(token);
+      return midi !== null ? midi : null;
+    })
+    .filter((v) => v !== null);
+}
+
+function nextTickValue(name, context) {
+  if (!context.bindings || !Array.isArray(context.bindings[name]) || context.bindings[name].length === 0) return null;
+  context.tickIndices = context.tickIndices || {};
+  const arr = context.bindings[name];
+  const idx = context.tickIndices[name] ?? 0;
+  const val = arr[idx % arr.length];
+  context.tickIndices[name] = (idx + 1) % arr.length;
+  return val;
+}
+
 function parsePlay(line, loopName, context) {
   // chord
   const chordMatch = line.match(/chord\(([^)]+)\)/);
@@ -114,13 +161,22 @@ function parsePlay(line, loopName, context) {
   }
   const notes = [];
   let resolved = null;
-  if (context.bindings && context.bindings[target] !== undefined) {
+  if (target.endsWith('.tick')) {
+    const base = target.replace(/\.tick$/, '');
+    resolved = nextTickValue(base, context);
+  } else if (context.bindings && context.bindings[target] !== undefined) {
     resolved = context.bindings[target];
   } else {
     resolved = noteSymbolToMidi(target);
   }
-  const midi = resolved;
-  if (midi !== null) notes.push(midi);
+  if (Array.isArray(resolved)) {
+    const flattened = resolved.flat ? resolved.flat() : resolved;
+    flattened.forEach((m) => {
+      if (m !== null) notes.push(m);
+    });
+  } else if (resolved !== null) {
+    notes.push(resolved);
+  }
   const opts = parseHashArgs(playMatch[2]);
   return buildEvent(notes, loopName, context, opts);
 }
@@ -181,6 +237,8 @@ function parseBlock(lines, loopName, baseContext, warnings) {
     bpm: baseContext.bpm,
     synth: baseContext.synth,
     defaults: { velocity: DEFAULT_VELOCITY, duration: DEFAULT_DURATION_BEATS, ...baseContext.defaults },
+    bindings: baseContext.bindings ? { ...baseContext.bindings } : {},
+    tickIndices: baseContext.tickIndices ? { ...baseContext.tickIndices } : {},
     time: timeBeats,
     timeSec,
   };
@@ -222,6 +280,40 @@ function parseBlock(lines, loopName, baseContext, warnings) {
     if (scaleAssign) {
       context.scaleRoot = scaleAssign[1];
       context.scaleNotes = buildScaleNotes(scaleAssign[1], scaleAssign[2], Number(scaleAssign[3]) || 1);
+      context.bindings = context.bindings || {};
+      context.bindings.notes = context.scaleNotes;
+      i += 1;
+      continue;
+    }
+
+    const ringAssign = line.match(/^([a-zA-Z_][\w]*)\s*=\s*\(ring\s+(.*)/);
+    if (ringAssign) {
+      const key = ringAssign[1];
+      let remainder = ringAssign[2];
+      while (!remainder.includes(')') && i + 1 < lines.length) {
+        i += 1;
+        remainder += ` ${lines[i].trim()}`;
+      }
+      const cleaned = remainder.replace(/\)\s*$/, '');
+      const vals = parseListToValues(cleaned);
+      context.bindings = context.bindings || {};
+      context.bindings[key] = vals;
+      i += 1;
+      continue;
+    }
+
+    const arrayAssign = line.match(/^([a-zA-Z_][\w]*)\s*=\s*\[(.*)/);
+    if (arrayAssign) {
+      const key = arrayAssign[1];
+      let remainder = arrayAssign[2];
+      while (!remainder.includes(']') && i + 1 < lines.length) {
+        i += 1;
+        remainder += ` ${lines[i].trim()}`;
+      }
+      const cleaned = remainder.replace(/\]\s*$/, '');
+      const vals = parseListToValues(cleaned);
+      context.bindings = context.bindings || {};
+      context.bindings[key] = vals;
       i += 1;
       continue;
     }
@@ -230,20 +322,25 @@ function parseBlock(lines, loopName, baseContext, warnings) {
     if (timesMatch) {
       const repeat = Number(timesMatch[1]);
       const { body, nextIndex } = collectDoEndBlock(lines, i + 1);
-      const inner = parseBlock(body, loopName, { ...context, offsetBeats: 0, offsetSec: 0 }, warnings);
-      const span = inner.lengthBeats || 0;
-      const spanSec = inner.lengthSec || 0;
       for (let r = 0; r < repeat; r += 1) {
-        inner.events.forEach((evt) => {
-          events.push({
-            ...evt,
-            startBeat: offsetBeats + timeBeats + evt.startBeat + span * r,
-            startSec: offsetSec + timeSec + evt.startSec + spanSec * r,
-          });
-        });
+        const inner = parseBlock(
+          body,
+          loopName,
+          {
+            ...context,
+            offsetBeats: offsetBeats + timeBeats,
+            offsetSec: offsetSec + timeSec,
+            tickIndices: context.tickIndices,
+            bindings: context.bindings,
+          },
+          warnings
+        );
+        inner.events.forEach((evt) => events.push(evt));
+        timeBeats += inner.lengthBeats;
+        timeSec += inner.lengthSec;
+        context.tickIndices = inner.tickIndices;
+        context.bindings = inner.bindings;
       }
-      timeBeats += span * repeat;
-      timeSec += spanSec * repeat;
       context.time = timeBeats;
       context.timeSec = timeSec;
       i = nextIndex;
@@ -265,7 +362,19 @@ function parseBlock(lines, loopName, baseContext, warnings) {
     if (withBpmMatch) {
       const childBpm = parseNumber(withBpmMatch[1]) || context.bpm;
       const { body, nextIndex } = collectDoEndBlock(lines, i + 1);
-      const inner = parseBlock(body, loopName, { ...context, bpm: childBpm, offsetBeats: 0, offsetSec: 0 }, warnings);
+      const inner = parseBlock(
+        body,
+        loopName,
+        {
+          ...context,
+          bpm: childBpm,
+          offsetBeats: 0,
+          offsetSec: 0,
+          tickIndices: context.tickIndices,
+          bindings: context.bindings,
+        },
+        warnings
+      );
       inner.events.forEach((evt) =>
         events.push({
           ...evt,
@@ -277,6 +386,8 @@ function parseBlock(lines, loopName, baseContext, warnings) {
       timeSec += inner.lengthSec;
       context.time = timeBeats;
       context.timeSec = timeSec;
+      context.tickIndices = inner.tickIndices;
+      context.bindings = inner.bindings;
       i = nextIndex;
       continue;
     }
@@ -287,12 +398,25 @@ function parseBlock(lines, loopName, baseContext, warnings) {
       const trigger = Math.floor(Math.random() * threshold) === 0;
       const { body, nextIndex } = collectDoEndBlock(lines, i + 1);
       if (trigger) {
-        const inner = parseBlock(body, loopName, { ...context, offsetBeats: timeBeats, offsetSec: timeSec }, warnings);
+        const inner = parseBlock(
+          body,
+          loopName,
+          {
+            ...context,
+            offsetBeats: offsetBeats + timeBeats,
+            offsetSec: offsetSec + timeSec,
+            tickIndices: context.tickIndices,
+            bindings: context.bindings,
+          },
+          warnings
+        );
         inner.events.forEach((evt) => events.push(evt));
         timeBeats += inner.lengthBeats;
         timeSec += inner.lengthSec;
         context.time = timeBeats;
         context.timeSec = timeSec;
+        context.tickIndices = inner.tickIndices;
+        context.bindings = inner.bindings;
       }
       i = nextIndex;
       continue;
@@ -306,6 +430,19 @@ function parseBlock(lines, loopName, baseContext, warnings) {
       const val = Math.random() * (high - low) + low;
       context.bindings = context.bindings || {};
       context.bindings[key] = val;
+      i += 1;
+      continue;
+    }
+
+    const tickAssign = line.match(/^([a-zA-Z_][\w]*)\s*=\s*([a-zA-Z_][\w]*)\.tick/);
+    if (tickAssign) {
+      const target = tickAssign[1];
+      const source = tickAssign[2];
+      const val = nextTickValue(source, context);
+      if (val !== null) {
+        context.bindings = context.bindings || {};
+        context.bindings[target] = val;
+      }
       i += 1;
       continue;
     }
@@ -347,7 +484,15 @@ function parseBlock(lines, loopName, baseContext, warnings) {
     0
   );
   const lengthSec = Math.max(timeSec, lastEventEndSec - offsetSec);
-  return { events, lengthBeats, lengthSec, baseTime: timeBeats, baseTimeSec: timeSec };
+  return {
+    events,
+    lengthBeats,
+    lengthSec,
+    baseTime: timeBeats,
+    baseTimeSec: timeSec,
+    tickIndices: context.tickIndices,
+    bindings: context.bindings,
+  };
 }
 
 export function parseSonicPiFile(filePath, options = {}) {

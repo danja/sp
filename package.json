@@ -5,10 +5,12 @@
   "type": "module",
   "main": "mcp/server.js",
   "bin": {
-    "sp-mc": "mcp/server.js"
+    "sp-mc": "mcp/server.js",
+    "sp-mc-render": "mcp/render/cli.js"
   },
   "scripts": {
     "start": "node mcp/server.js",
+    "render-midi": "node mcp/render/cli.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",

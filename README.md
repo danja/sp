@@ -33,7 +33,7 @@ The server provides six tools:
 - `make_acid` - Generate an Acid House style track
 - `render_midi` - Read a Sonic Pi `.rb` file and render a `.mid` file with one track per instrument (drums split per instrument)
 
-### Sonic Pi → MIDI rendering
+### Sonic Pi → MIDI rendering (MCP + CLI)
 Use the `render_midi` MCP tool to export a `.mid` file from an existing Sonic Pi Ruby script:
 ```json
 {
@@ -46,6 +46,11 @@ Use the `render_midi` MCP tool to export a `.mid` file from an existing Sonic Pi
 }
 ```
 Drums are split into separate tracks (kick, snare, hats, etc.). Use `loop_names` to render specific `live_loop`s or `drum_split: false` to merge all percussion into one track.
+
+Or run it directly from the CLI (no MCP needed):
+```sh
+npx sp-mc-render --path examples/techno_banger.rb --output out.mid --bars 8 --loops kick,hats,bass,lead
+```
 
 Known limitations (planned improvements):
 - Complex Ruby control flow/randomness is skipped with warnings.
